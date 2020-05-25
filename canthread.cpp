@@ -1,30 +1,29 @@
 #include "canthread.h"
-#include <qtextcodec.h>
 
 
 Thread::Thread()
 {
     stopped = false;
 
-    devtype=4;//?豸????USBCAN2
-    devind=0;//?豸??????
-    res=0;//??????λ??????0
-    canind=0;//CAN???0
-    reftype=0;//????????
+    devtype=3;//设备类型USBCAN2
+    devind=0;//设备索引号
+    res=0;//系统保留位，一般为0
+    canind=0;//CAN通道0
+    reftype=0;//参数类型
     bool ok;
 
     VCI_ERR_INFO vei;
     VCI_CAN_OBJ preceive[100];
     VCI_CAN_OBJ psend;
-    int baud=0x10000000;//?????й??????????????????
-    //??????
+    int baud=0x10000000;//参数有关数据缓冲区地址首指针
+    //导入库
     QLibrary lib("usbcan.dll");
     if(true==lib.load())
     {
 
-        pOpenDevice = (VCI_OpenDevice *)lib.resolve("VCI_OpenDevice");//???????????VCI_InitCAN?????????????
+        pOpenDevice = (VCI_OpenDevice *)lib.resolve("VCI_OpenDevice");//是不能直接使用VCI_InitCAN函数的，必须导出
         pCloseDevice = (VCI_CloseDevice *)lib.resolve("VCI_CloseDevice");
-        pInitCAN = (VCI_InitCAN *)lib.resolve("VCI_InitCAN");//???????dll?к???????
+//        pInitCAN = (VCI_InitCAN *)lib.resolve("VCI_InitCAN");//两种导出dll中函数的方式
         pStartCAN = (VCI_StartCAN *)lib.resolve("VCI_StartCAN");
         pTransmitCAN = (VCI_Transmit *)lib.resolve("VCI_Transmit");
         pReceive = (VCI_Receive *)lib.resolve("VCI_Receive");
@@ -63,7 +62,7 @@ void Thread::stop()
 
 
 
-QString Thread::binToDec(QString strBin){  //????????????
+QString Thread::binToDec(QString strBin){  
     QString decimal;
     int nDec = 0,nLen;
     int i,j,k;
@@ -268,7 +267,7 @@ void Thread::ReceiveCANThread()
 void Thread::TransmitCANThread(unsigned int id,unsigned char *ch)
 {
     VCI_CAN_OBJ psend;
-    //????
+    //发送
     ULONG Tr;
     psend.ID=id;
     psend.SendType=0;
@@ -282,7 +281,7 @@ void Thread::TransmitCANThread(unsigned int id,unsigned char *ch)
 
     Tr=pTransmitCAN(devtype,devind,canind,&psend,1);
     if(Tr!=STATUS_ERR){
-        qDebug()<<QStringLiteral("?????????")<<Tr;
+        qDebug()<<QStringLiteral("发送帧数：")<<Tr;
     }
 }
 
@@ -292,9 +291,9 @@ void Thread::OpenCANThread()
     VCI_ERR_INFO vei;
     VCI_CAN_OBJ preceive[100];
     VCI_CAN_OBJ psend;
-    int baud=0x10000000;//?????й??????????????????
-   //?????豸
-    if(pOpenDevice(devtype,devind,res)==STATUS_ERR )//?????0???????1λ???,????????ó????
+    int baud=0x10000000;//参数有关数据缓冲区地址首指针
+    //打开设备
+    if(pOpenDevice(devtype,devind,res)==STATUS_ERR )//返回值0表示失败，1位成功,打开之前记得初始化
     {
         if(pReadErrInfoCAN(devtype,devind,canind,&vei)!=STATUS_ERR)
         {
@@ -306,16 +305,16 @@ void Thread::OpenCANThread()
     }else
         qDebug()<<"open successed";
 
-    //?????
+    //初始化
     VCI_INIT_CONFIG init_config;
-    init_config.Mode=0;//????????1??????
-    init_config.Filter=1;//?????????????
-    //?????0??1??????????can?????????
-    init_config.Timing0=0x00;//?????0
-    init_config.Timing1=0x1c;//?????1
-    init_config.AccCode=0x10000000;//??????
-    init_config.AccMask=0xFFFFFFFF;//??????
-    //??????豸??????г?????????can???
+    init_config.Mode=0;//正常模式，1为只听模式
+    init_config.Filter=1;//滤波方式，单滤波
+    //定时器0和1适用于配置can通信波特率的
+    init_config.Timing0=0x00;//定时器0
+    init_config.Timing1=0x1c;//定时器1
+    init_config.AccCode=0x10000000;//验收码
+    init_config.AccMask=0xFFFFFFFF;//屏蔽码
+    //先打开设备，再进行初始化
     if(pInitCAN(devtype,devind,canind,&init_config)==STATUS_ERR){
         qDebug("Init Error");
         pCloseDevice(devtype,devind);
@@ -324,25 +323,25 @@ void Thread::OpenCANThread()
         qDebug()<<"Init successed";
 
 
-    //????豸???
+    //读取设备信息
     VCI_BOARD_INFO vbi;
     if(pReadBoardInfo(devtype,devind,&vbi)!=STATUS_ERR){
-        qDebug()<<QStringLiteral("CAN???????")<<vbi.can_Num;
-        qDebug()<<QStringLiteral("????汾??:")<<vbi.hw_Version;
-        qDebug()<<QStringLiteral("?????汾???")<<vbi.in_Version;
-        qDebug()<<QStringLiteral("?ж??")<<vbi.irq_Num;
-        qDebug()<<QStringLiteral("can?????????")<<vbi.can_Num;
+        qDebug()<<QStringLiteral("CAN通道数：")<<vbi.can_Num;
+        qDebug()<<QStringLiteral("硬件版本号:")<<vbi.hw_Version;
+        qDebug()<<QStringLiteral("接口库版本号：")<<vbi.in_Version;
+        qDebug()<<QStringLiteral("中断号")<<vbi.irq_Num;
+        qDebug()<<QStringLiteral("can通道个数：")<<vbi.can_Num;
     }
-    //?????豸????(??????????????????USBCAN?豸?ò??????ò????????NETUDP??NETTCP???????????????????????????ò???Ч)
+    //设置设备参数(主要是设置通信波特率，USBCAN设备用不着设置参数类型，NETUDP和NETTCP才需要，而且必须在初
     if(pSetReference(devtype,devind,canind,reftype,&baud)==STATUS_ERR){
         qDebug("set reference error");
         pCloseDevice(devtype,devind);
         return;
     }
-    //??????????
+    //清除缓冲区
     pClearBuffer(devtype,devind,canind);
 
-    //?????豸???can???
+    //启动设备一个can通道
     if(pStartCAN(devtype,devind,canind)==STATUS_ERR){
         qDebug()<<"start fail";
         pCloseDevice(devtype,devind);
