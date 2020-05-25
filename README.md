@@ -21,7 +21,7 @@
 
 解析后毫米波雷达数据帧
 
-![0](/media/xiaohu/xiaohu/做过项目/CanDemo(1)/CanDemo/result_pic/0.png)
+![0](https://github.com/Xiao-Hu-Z/CAN-demo/blob/master/result_pic/1.png)
 
 
 
@@ -31,4 +31,4 @@
 
 
 
-![](/media/xiaohu/xiaohu/做过项目/CanDemo(1)/CanDemo/result_pic/1.png)
+![](https://github.com/Xiao-Hu-Z/CAN-demo/blob/master/result_pic/1.png)
