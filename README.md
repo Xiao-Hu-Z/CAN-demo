@@ -28,7 +28,7 @@
 修2：
 
 接受和解析毫米波雷达数据帧，并可以对数据进行保存。(图没有连接雷达，去学校再加)
-
-
+左侧：解析后数据    
+右侧：接受数据帧
 
 ![](https://github.com/Xiao-Hu-Z/CAN-demo/blob/master/result_pic/1.png)
